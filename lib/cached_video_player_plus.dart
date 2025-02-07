@@ -9,6 +9,7 @@
 library cached_video_player_plus;
 
 import 'dart:async';
+import 'package:async/async.dart';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -279,6 +280,8 @@ String _getCacheKey(String dataSource) {
 /// After [dispose] all further calls are ignored.
 class CachedVideoPlayerPlusController
     extends ValueNotifier<CachedVideoPlayerPlusValue> {
+  static CancelableOperation<FileInfo>? _cancelableOperation;
+
   /// Constructs a [CachedVideoPlayerPlusController] playing a video from an asset.
   ///
   /// The name of the asset is given by the [dataSource] argument and must not be
@@ -516,9 +519,14 @@ class CachedVideoPlayerPlusController
       }
 
       if (cachedFile == null) {
-        _cacheManager
-            .downloadFile(dataSource, authHeaders: httpHeaders)
-            .then((_) {
+        _cancelableOperation?.cancel();
+        _cancelableOperation = CancelableOperation.fromFuture(
+          _cacheManager.downloadFile(dataSource, authHeaders: httpHeaders),
+          onCancel: () {
+            debugPrint('Canceled Cached video [$dataSource].');
+          },
+        );
+        _cancelableOperation?.value.then((_) {
           _storage.write(
             _getCacheKey(dataSource),
             DateTime.timestamp().millisecondsSinceEpoch,
