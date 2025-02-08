@@ -16,5 +16,13 @@ class VideoCacheManager extends CacheManager {
   factory VideoCacheManager() => _instance;
 
   /// Creates a new instance of the [VideoCacheManager].
-  VideoCacheManager._() : super(Config(key));
+  VideoCacheManager._()
+      : super(
+          Config(
+            key,
+            stalePeriod: const Duration(
+              days: 1,
+            ),
+          ),
+        );
 }
