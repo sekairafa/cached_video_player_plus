@@ -16,7 +16,17 @@ class VideoCacheManager extends CacheManager {
   factory VideoCacheManager() => _instance;
 
   /// Creates a new instance of the [VideoCacheManager].
-  VideoCacheManager._()
+  VideoCacheManager._() : super(Config(key));
+}
+
+class VideoCacheManagerStory extends CacheManager {
+  static const key = 'libCachedVideoPlayerPlusDataStory';
+
+  static final VideoCacheManagerStory _instance = VideoCacheManagerStory._();
+
+  factory VideoCacheManagerStory() => _instance;
+
+  VideoCacheManagerStory._()
       : super(
           Config(
             key,

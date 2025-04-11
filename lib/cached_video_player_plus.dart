@@ -258,7 +258,8 @@ class CachedVideoPlayerPlusValue {
       );
 }
 
-final _cacheManager = VideoCacheManager();
+final _cacheManager_ = VideoCacheManager();
+final _cacheManagerStory_ = VideoCacheManagerStory();
 final _storage = GetStorage('cached_video_player_plus');
 
 String _getCacheKey(String dataSource) {
@@ -286,6 +287,7 @@ class CachedVideoPlayerPlusController
   /// package and null otherwise.
   CachedVideoPlayerPlusController.asset(
     this.dataSource, {
+    this.isStoryMode = false,
     this.package,
     Future<ClosedCaptionFile>? closedCaptionFile,
     this.videoPlayerOptions,
@@ -309,6 +311,7 @@ class CachedVideoPlayerPlusController
   @Deprecated('Use CachedVideoPlayerPlusController.networkUrl instead')
   CachedVideoPlayerPlusController.network(
     this.dataSource, {
+    this.isStoryMode = false,
     this.formatHint,
     Future<ClosedCaptionFile>? closedCaptionFile,
     this.videoPlayerOptions,
@@ -331,6 +334,7 @@ class CachedVideoPlayerPlusController
   /// for the request to the [dataSource].
   CachedVideoPlayerPlusController.networkUrl(
     Uri url, {
+    this.isStoryMode = false,
     this.formatHint,
     Future<ClosedCaptionFile>? closedCaptionFile,
     this.videoPlayerOptions,
@@ -349,6 +353,7 @@ class CachedVideoPlayerPlusController
   /// [httpHeaders] option allows to specify HTTP headers, mainly used for hls files like (m3u8).
   CachedVideoPlayerPlusController.file(
     File file, {
+    this.isStoryMode = false,
     Future<ClosedCaptionFile>? closedCaptionFile,
     this.videoPlayerOptions,
     this.httpHeaders = const <String, String>{},
@@ -367,6 +372,7 @@ class CachedVideoPlayerPlusController
   /// This is supported on Android only.
   CachedVideoPlayerPlusController.contentUri(
     Uri contentUri, {
+    this.isStoryMode = false,
     Future<ClosedCaptionFile>? closedCaptionFile,
     this.videoPlayerOptions,
   })  : assert(
@@ -383,9 +389,14 @@ class CachedVideoPlayerPlusController
         skipCache = false,
         super(const CachedVideoPlayerPlusValue(duration: Duration.zero));
 
+  CacheManager get _cacheManager =>
+      isStoryMode ? _cacheManagerStory_ : _cacheManager_;
+
   /// The URI to the video file. This will be in different formats depending on
   /// the [DataSourceType] of the original video.
   final String dataSource;
+
+  final bool isStoryMode;
 
   /// HTTP headers used for the request to the [dataSource].
   /// Only for [CachedVideoPlayerPlusController.networkUrl].
@@ -455,13 +466,15 @@ class CachedVideoPlayerPlusController
   }
 
   /// This will remove cached file from cache of the given [url].
-  static Future<void> removeFileFromCache(String url) async {
+  static Future<void> removeFileFromCache(String url, bool isStoryMode) async {
     await _storage.initStorage;
 
     url = Uri.parse(url).toString();
 
     await Future.wait([
-      _cacheManager.removeFile(url),
+      isStoryMode
+          ? _cacheManagerStory_.removeFile(url)
+          : _cacheManager_.removeFile(url),
       _storage.remove('cached_video_player_plus_video_expiration_of_$url'),
     ]);
   }
@@ -471,7 +484,8 @@ class CachedVideoPlayerPlusController
     await _storage.initStorage;
 
     await Future.wait([
-      _cacheManager.emptyCache(),
+      _cacheManager_.emptyCache(),
+      _cacheManagerStory_.emptyCache(),
       _storage.erase(),
     ]);
   }
@@ -861,7 +875,6 @@ class CachedVideoPlayerPlusController
     }
 
     final Duration delayedPosition = position + value.captionOffset;
-    // TODO(johnsonmh): This would be more efficient as a binary search.
     for (final Caption caption in _closedCaptionFile!.captions) {
       if (caption.start <= delayedPosition && caption.end >= delayedPosition) {
         return caption;
@@ -943,7 +956,10 @@ class _VideoAppLifeCycleObserver extends Object with WidgetsBindingObserver {
 /// Widget that displays the video controlled by [controller].
 class CachedVideoPlayerPlus extends StatefulWidget {
   /// Uses the given [controller] for all video rendered in this widget.
-  const CachedVideoPlayerPlus(this.controller, {super.key});
+  const CachedVideoPlayerPlus(
+    this.controller, {
+    super.key,
+  });
 
   /// The [CachedVideoPlayerPlusController] responsible for the video being rendered in
   /// this widget.
